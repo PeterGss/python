@@ -1,30 +1,88 @@
-题目名
-日志 pattern 训练
+import json
+import tensorflow as tf
+from collections import Counter
+from itertools import dropwhile
+import numpy as np
+S = {
+    'bs': 50,              #batch size 涓€娆¤缁冨灏戜釜妯℃澘
+    'ti': 5000,            #training iterations  璁粌澶氬皯娆?
+    'lr': 1e-2,             #learning rate  瀛︿範閫熷害
+    'il': 3,                #interest level, >= which would be deemed interesting
+    }
+tf.set_random_seed(0)     #璋冩暣闅忔満 纭繚涓嬫涔熻兘寰楀埌鍚屾牱缁撴灉
+np.random.seed(0)
+def read_data():         #璇诲彇鏁版嵁
+    entries = []
+    with open(r'F:/Python/pycharm/workspace/trains.jsonl', 'r') as f:
+        for line in f:
+            s = line.strip('\x00')
+            entries.append(json.loads(s[s.rfind('\x00')+1:]))
+    return entries
+#涓诲嚱鏁?
+def main():
+    entries = read_data()
+    #
+    view_names = set()
+    interesting_attributes = Counter()
 
-问题描述
-业务中经常需要对日志中 api 的访问情况进行监控。
-现需要实现一个日志监控程序，现提供：
+    for i in entries:
+        view_names.add(i['view_name'])
+        pathdir = i['path'].split('/')
+        for j in pathdir:
+            interesting_attributes[j] += 1
 
-1、训练文件 train.jsonl.gz，文件是 gzip 压缩文件（python gzip 包可以直接读取），
-每一行都是一个 json；其中文件字段说明如下：
-（1）path：请求的路径；
-（2）view_name：访问 path 对应 view 的名称
-一个 view_name 对应多个 path）；
+    for key, count in dropwhile(lambda key_count: key_count[1] >= S['il'], interesting_attributes.most_common()):
+        del interesting_attributes[key]
+        # 鎶婃墍鏈夌殑view_name 鍔犲埌view_names set涓?骞朵笖鏁版墍鏈夌殑缃戝潃鍚?鍒嗗紑鐨刟ttributes   澶т簬绛変簬涓夌殑淇濈暀
+
+    view_names = list(view_names)
+    i2n, n2i = dict(), dict()
+    #view_names 鐨勮浆鎹?
+    for i, n in enumerate(view_names):
+        i2n[i] = n
+        n2i[n] = i
+
+    interesting_attributes = interesting_attributes.keys()
+    #path鐨勮浆鍖?
+    i2a, a2i = dict(), dict()
+    for i, a in enumerate(interesting_attributes):
+        i2a[i] = a
+        a2i[a] = i
+        #鍒涢€犱竴涓浆鍖栦负鏁村舰寮犻噺鐨勪竴涓储寮曪紝鑳借浆鎹㈣繃鍘伙紝杞崲鍥炴潵
+
+    global_step= tf.Variable(0., False, dtype=tf.float32)
+    #寤虹珛鍥?
+    x = tf.placeholder(tf.float32, [None, len(interesting_attributes)], name = 'input')
+    y_ = tf.placeholder(tf.float32, [None, len(view_names)], name = 'label')
+    W = tf.Variable(tf.random_normal([len(interesting_attributes), len(view_names)]), dtype = tf.float32)
+    b = tf.Variable(tf.random_normal([len(view_names)], dtype = tf.float32))
+    linear = tf.matmul(x, W) + b
+    accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(tf.nn.softmax(linear), 1), tf.argmax(y_, 1)), tf.float32))
+    loss = tf.losses.softmax_cross_entropy(y_, linear)
+    learning_rate = tf.train.exponential_decay(S['lr'], global_step, S['ti'] // 10, 0.5, staircase = True)
+    optimizer = tf.train.AdamOptimizer(learning_rate)
+    train = optimizer.minimize(loss, global_step)
+    init = tf.global_variables_initializer()
+    #寤虹珛鍥?
+    with tf.Session() as sess:
+        sess.run(init)
+        for i in range(S['ti']):
+            feed_indices = np.random.randint(low = 0, high = len(entries), size = S['bs'])
+            feed_input_arrays = []
+            feed_labels = np.array([[0.] * len(view_names) for _ in range(S['bs'])], dtype = np.float32)
+            for ji, j in enumerate(feed_indices):
+                ia = np.zeros(len(interesting_attributes), dtype = np.float32)
+                feed_labels[ji][n2i[entries[j]['view_name']]] = 1.
+                for k in entries[j]['path'].split('/')[1:]:
+                    if k in interesting_attributes:
+                        ia[a2i[k]] = 1.
+                feed_input_arrays.append(ia)
+
+            feed_input = np.stack(feed_input_arrays)
+
+            l, a, _ = sess.run((loss, accuracy, train), feed_dict={x: feed_input, y_: feed_labels})
+            print('batch {}/{}: accuracy = {:.2f}%, loss = {}'.format(i, S['ti'], a*100, l))#杈撳嚭 绮剧‘搴?
 
 
-2、测试文件 test.txt，里面有大量 path
-
-3、对解析 path 的部分有极高的性能需求，最低性能要求每分钟处理 20 万以上的数据。
-
-
-
-
-实现目标
-需要编写一个程序，完成如下任务：
-1、训练模型脚本：
-根据 train.jsonl.gz 里的 view_name 和 path，
-训练 path 的 pattern，将相似的 path 训练并聚合，
-
-
-2、测试脚本
-读取 test.txt 文件中的 path，用上一步训练模型计算出其所属 view_name，并输出训练结果 result.txt。
+if __name__ == '__main__':
+    main()
