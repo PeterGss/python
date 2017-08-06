@@ -4,21 +4,21 @@ from collections import Counter
 from itertools import dropwhile
 import numpy as np
 S = {
-    'bs': 50,              #batch size 涓€娆¤缁冨灏戜釜妯℃澘
-    'ti': 5000,            #training iterations  璁粌澶氬皯娆?
-    'lr': 1e-2,             #learning rate  瀛︿範閫熷害
+    'bs': 50,              #batch size 一次训练多少个模板
+    'ti': 5000,            #training iterations  训练多少次
+    'lr': 1e-2,             #learning rate  学习速度
     'il': 3,                #interest level, >= which would be deemed interesting
     }
-tf.set_random_seed(0)     #璋冩暣闅忔満 纭繚涓嬫涔熻兘寰楀埌鍚屾牱缁撴灉
+tf.set_random_seed(0)     #调整随机 确保下次也能得到同样结果
 np.random.seed(0)
-def read_data():         #璇诲彇鏁版嵁
+def read_data():         #读取数据
     entries = []
     with open(r'F:/Python/pycharm/workspace/trains.jsonl', 'r') as f:
         for line in f:
             s = line.strip('\x00')
             entries.append(json.loads(s[s.rfind('\x00')+1:]))
     return entries
-#涓诲嚱鏁?
+#主函数
 def main():
     entries = read_data()
     #
@@ -33,25 +33,25 @@ def main():
 
     for key, count in dropwhile(lambda key_count: key_count[1] >= S['il'], interesting_attributes.most_common()):
         del interesting_attributes[key]
-        # 鎶婃墍鏈夌殑view_name 鍔犲埌view_names set涓?骞朵笖鏁版墍鏈夌殑缃戝潃鍚?鍒嗗紑鐨刟ttributes   澶т簬绛変簬涓夌殑淇濈暀
+        # 把所有的view_name 加到view_names set中 并且数所有的网址后/分开的attributes   大于等于三的保留
 
     view_names = list(view_names)
     i2n, n2i = dict(), dict()
-    #view_names 鐨勮浆鎹?
+    #view_names 的转换
     for i, n in enumerate(view_names):
         i2n[i] = n
         n2i[n] = i
 
     interesting_attributes = interesting_attributes.keys()
-    #path鐨勮浆鍖?
+    #path的转化
     i2a, a2i = dict(), dict()
     for i, a in enumerate(interesting_attributes):
         i2a[i] = a
         a2i[a] = i
-        #鍒涢€犱竴涓浆鍖栦负鏁村舰寮犻噺鐨勪竴涓储寮曪紝鑳借浆鎹㈣繃鍘伙紝杞崲鍥炴潵
+        #创造一个转化为整形张量的一个索引，能转换过去，转换回来
 
     global_step= tf.Variable(0., False, dtype=tf.float32)
-    #寤虹珛鍥?
+    #建立图
     x = tf.placeholder(tf.float32, [None, len(interesting_attributes)], name = 'input')
     y_ = tf.placeholder(tf.float32, [None, len(view_names)], name = 'label')
     W = tf.Variable(tf.random_normal([len(interesting_attributes), len(view_names)]), dtype = tf.float32)
@@ -63,7 +63,7 @@ def main():
     optimizer = tf.train.AdamOptimizer(learning_rate)
     train = optimizer.minimize(loss, global_step)
     init = tf.global_variables_initializer()
-    #寤虹珛鍥?
+    #建立图
     with tf.Session() as sess:
         sess.run(init)
         for i in range(S['ti']):
@@ -81,7 +81,7 @@ def main():
             feed_input = np.stack(feed_input_arrays)
 
             l, a, _ = sess.run((loss, accuracy, train), feed_dict={x: feed_input, y_: feed_labels})
-            print('batch {}/{}: accuracy = {:.2f}%, loss = {}'.format(i, S['ti'], a*100, l))#杈撳嚭 绮剧‘搴?
+            print('batch {}/{}: accuracy = {:.2f}%, loss = {}'.format(i, S['ti'], a*100, l))#输出 精确度
 
 
 if __name__ == '__main__':
