@@ -1,33 +1,30 @@
-# python
-# pic2text 图片转文字
-A script to transform picture to text, supporting Chinese</br>
-一个将图片转换成文字图的脚本，支持中文</br>
-刚学Python不久，代码不是特别简洁，因为要计算出灰度范围，导致循环了两次</br>
-为了支持中文，必须要使用中文字体</br>
-代码基本每一行都注释了</br>
-效果图：
-![image](preview.jpg)
-# Dependencies 环境依赖
-Python 2.7</br>
-PIL
+题目名
+日志模式训练
 
-# How to use 如何使用
-copy a font file to your directory and edit line 27:</br>
-拷贝一个字体文件到目录，然后修改代码27行中的字体名称：
-```python
-  ft = ImageFont.truetype("msyhbd.ttf",fontSize)
-```
-edit last several lines of codes:</br>
-编辑最后几行代码：
-```python
-    textList = ['撒','啊','呵','王','一']
-    pic2Text('test.jpg',textList)
-```
-sort characters by Density</br>
-按照字母笔画密集程度排列
+问题描述
+业务中经常需要对日志中api的访问情况进行监控。
+现需要实现一个日志监控程序，现提供：
 
-# About 关于作者
-不灭的小灯灯</br>
-Love programming,love designing</br>
-Mail:winterfeel@qq.com</br>
-Blog:www.winterfeel.com
+1，训练文件train.jsonl.gz，文件是gzip压缩文件（python gzip包可以直接读取），
+每一行都是一个json;其中文件字段说明如下：
+（1）路径：请求的路径;
+（2）view_name：访问路径对应视图的名称
+一个view_name对应多个路径）;
+
+
+2，测试文件test.txt，里面有大量路径
+
+3，对解析路径的部分有极高的性能需求，最低性能要求每分钟处理20万以上的数据。
+
+
+
+
+实现目标
+需要编写一个程序，完成如下任务：
+1，训练模型脚本：
+根据train.jsonl.gz里的view_name和路径，
+训练路径的模式，将相似的路径训练并聚合，
+
+
+2，测试脚本
+读取test.txt文件中的路径，用上一步训练模型计算出其所属view_name，并输出训练结果result.txt。
