@@ -1,0 +1,30 @@
+题目名
+日志 pattern 训练
+
+问题描述
+业务中经常需要对日志中 api 的访问情况进行监控。
+现需要实现一个日志监控程序，现提供：
+
+1、训练文件 train.jsonl.gz，文件是 gzip 压缩文件（python gzip 包可以直接读取），
+每一行都是一个 json；其中文件字段说明如下：
+（1）path：请求的路径；
+（2）view_name：访问 path 对应 view 的名称
+一个 view_name 对应多个 path）；
+
+
+2、测试文件 test.txt，里面有大量 path
+
+3、对解析 path 的部分有极高的性能需求，最低性能要求每分钟处理 20 万以上的数据。
+
+
+
+
+实现目标
+需要编写一个程序，完成如下任务：
+1、训练模型脚本：
+根据 train.jsonl.gz 里的 view_name 和 path，
+训练 path 的 pattern，将相似的 path 训练并聚合，
+
+
+2、测试脚本
+读取 test.txt 文件中的 path，用上一步训练模型计算出其所属 view_name，并输出训练结果 result.txt。
